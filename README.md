@@ -47,6 +47,8 @@ The mobile profile expansion adds image uploads, interests, relationship intent,
 
 Outing preferences add food and venue choices, openness to trying new activities, first-date setting, and the choice to opt in or out of dating challenges. Run [supabase/mobile-outing-preferences.sql](supabase/mobile-outing-preferences.sql) in the Supabase SQL Editor before saving these fields.
 
+Phone verification uses Supabase Auth's phone-change SMS OTP flow. Before using it, enable phone authentication in Supabase **Authentication → Providers → Phone** and configure an SMS provider and phone-change message template. The ID/passport screen stays disabled until a secure Sumsub token endpoint and signed verification-result callback are configured; never enable it with a client-side flag alone.
+
 Message and chat background colors are saved separately to each member's profile. Run [supabase/mobile-chat-color.sql](supabase/mobile-chat-color.sql), [supabase/mobile-chat-panel-color.sql](supabase/mobile-chat-panel-color.sql), and [supabase/mobile-chat-background-customization.sql](supabase/mobile-chat-background-customization.sql) in the Supabase SQL Editor to enable saving and restoring colors and patterns.
 
 Persistent mobile likes and the Connections view use [supabase/mobile-social.sql](supabase/mobile-social.sql). Run that migration before expecting like/pass actions to survive app restarts.

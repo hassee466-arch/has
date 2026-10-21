@@ -469,6 +469,24 @@ export default function App() {
     }
   };
 
+  const sendPhoneVerificationCode = async (phone: string): Promise<string | null> => {
+    if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
+      return 'Ange ett giltigt telefonnummer med landskod, till exempel +46701234567.';
+    }
+    const { error } = await supabase.auth.updateUser({ phone });
+    return error?.message ?? null;
+  };
+
+  const verifyPhoneCode = async (phone: string, code: string): Promise<string | null> => {
+    if (!/^\+[1-9]\d{7,14}$/.test(phone) || !/^\d{6,8}$/.test(code)) {
+      return 'Kontrollera telefonnumret och ange SMS-koden.';
+    }
+    const { data, error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'phone_change' });
+    if (error) return error.message;
+    if (data.session) setSession(data.session);
+    return null;
+  };
+
   const openReactionPicker = (target: Profile) => {
     console.log('Opening reaction picker for:', target.display_name);
     setEmojiPickerTarget(target);
@@ -604,18 +622,43 @@ export default function App() {
   if (loading) return <View style={styles.center}><Text style={styles.muted}>Laddar Jannahu…</Text></View>;
   if (!session || authMode === 'reset') return <AuthScreen mode={authMode} email={email} password={password} confirmPassword={confirmPassword} name={name} error={authError} notice={authNotice} submitting={authSubmitting} onModeChange={(mode) => { setAuthMode(mode); setAuthError(''); setAuthNotice(''); }} onEmail={setEmail} onPassword={setPassword} onConfirmPassword={setConfirmPassword} onName={setName} onForgotPassword={() => { setAuthMode('forgot'); setAuthError(''); setAuthNotice(''); }} onBackToLogin={() => { setAuthMode('login'); setPassword(''); setConfirmPassword(''); setAuthError(''); setAuthNotice(''); }} onSubmit={submitAuth} />;
 
-  const sumsubReady = Boolean(process.env.EXPO_PUBLIC_SUMSUB_ENABLED);
+  // Keep ID verification disabled until a secure provider-token endpoint and callback are configured.
+  const sumsubReady = false;
+  const phoneVerificationProps = {
+    phone: session.user.phone ?? '',
+    phoneVerified: Boolean(session.user.phone_confirmed_at),
+    onSendPhoneCode: sendPhoneVerificationCode,
+    onVerifyPhoneCode: verifyPhoneCode,
+  };
   // Verification is paused in development: set EXPO_PUBLIC_VERIFICATION_PAUSED=false to re-enable the gate.
   const verificationPaused = process.env.EXPO_PUBLIC_VERIFICATION_PAUSED !== 'false';
   if (!verificationPaused) {
     if (verificationStatus === 'loading') return <View style={styles.center}><Text style={styles.muted}>Kontrollerar verifiering…</Text></View>;
-    if (verificationStatus !== 'verified') return <IdentityGate status={verificationStatus} emailVerified={Boolean(session.user.email_confirmed_at)} providerReady={sumsubReady} onStartVerification={() => { if (!sumsubReady) return; }} onRefresh={() => { setVerificationStatus('loading'); void loadData(session.user.id); }} onLogout={() => void supabase.auth.signOut()} />;
+    if (verificationStatus !== 'verified') return <IdentityGate {...phoneVerificationProps} status={verificationStatus} emailVerified={Boolean(session.user.email_confirmed_at)} providerReady={sumsubReady} onStartVerification={() => { if (!sumsubReady) return; }} onRefresh={() => { setVerificationStatus('loading'); void loadData(session.user.id); }} onLogout={() => void supabase.auth.signOut()} />;
   }
 
   const currentMatch = matches[matchIndex];
   return <SafeAreaView style={styles.safe}><StatusBar style="dark" />
     <View style={styles.header}><View><Text style={styles.brand}>möt</Text><Text style={styles.kicker}>DATE WITH INTENTION</Text></View><View style={styles.headerActions}><Pressable onPress={() => setScreen(screen === 'profile' ? 'discover' : 'profile')}><Text style={styles.headerAction}>{screen === 'profile' ? 'Upptäck' : 'Profil'}</Text></Pressable><Pressable onPress={() => setScreen(screen === 'connections' ? 'discover' : 'connections')}><Text style={styles.headerAction}>{screen === 'connections' ? 'Upptäck' : `❤️ ${mutualIds.length}`}</Text></Pressable><Pressable onPress={() => setScreen(screen === 'challenges' ? 'discover' : 'challenges')}><Text style={styles.headerAction}>{screen === 'challenges' ? 'Upptäck' : '⭐'}</Text></Pressable><Pressable onPress={() => setScreen(screen === 'membership' ? 'discover' : 'membership')}><Text style={styles.headerAction}>{screen === 'membership' ? 'Upptäck' : 'Medlemskap'}</Text></Pressable></View></View>
-    {screen === 'discover' ? <DiscoverScreen match={matches.filter((match) => !blockedIds.includes(match.id))[matchIndex]} remaining={matches.filter((match) => !blockedIds.includes(match.id)).length - matchIndex} onDecision={decideMatch} onProfile={() => setScreen('profile')} onReaction={openReactionPicker} showEmojiPicker={showEmojiPicker} emojiPickerTarget={emojiPickerTarget} onSendEmoji={sendReaction} onCloseEmojiPicker={closeEmojiPicker} /> : screen === 'connections' ? <ConnectionsScreen matches={matches.filter((match) => mutualIds.includes(match.id) && !blockedIds.includes(match.id))} onChat={openChat} onBlock={blockProfile} onReport={reportProfile} onRate={(target) => { setRatingTarget(target); setScreen('dateRating'); }} /> : screen === 'challenges' ? <ChallengeEngineScreen membershipTier={membershipTier} onInvite={() => setScreen('connections')} /> : screen === 'membership' ? <MembershipScreen currentTier={membershipTier} onSelectTier={(tier) => { setMembershipTier(tier); Alert.alert('Medlemskap valt', 'Betalning aktiveras när betalningssteget kopplas på. Ditt val är sparat för den här sessionen.'); }} /> : screen === 'chatSettings' ? <ChatSettingsScreen settings={chatSettings} onSettingsChange={setChatSettings} onBack={() => setScreen(chatTarget ? 'chat' : 'connections')} chatColor={chatColor} onChatColorChange={updateChatColor} chatPanelColor={chatPanelColor} onChatPanelColorChange={updateChatPanelColor} chatPanelPattern={chatPanelPattern} onChatPanelPatternChange={updateChatPanelPattern} /> : screen === 'dateRating' && ratingTarget ? <DateRatingScreen target={ratingTarget} onBack={() => setScreen('connections')} onSubmit={submitDateRating} /> : screen === 'chat' && chatTarget ? <ChatScreen target={chatTarget} currentUserId={session.user.id} conversationId={chatConversationId} messages={messages} draft={draftMessage} onDraft={setDraftMessage} onSend={sendMessage} onBack={() => setScreen('connections')} onOpenSettings={() => setScreen('chatSettings')} chatColor={chatColor} chatPanelColor={chatPanelColor} chatPanelPattern={chatPanelPattern} /> : profile ? <ProfileJourneyScreen profile={profile} journey={profileJourney} email={session.user.email ?? ''} emailVerified={Boolean(session.user.email_confirmed_at)} saveError={profileJourneyError} saving={saving} onUpdateProfile={updateProfile} onUpdateJourney={updateProfileJourney} onPickImage={pickProfileImage} onSave={saveProfile} onComplete={() => setScreen('discover')} onLogout={() => void supabase.auth.signOut()} chatColor={chatColor} onUpdateChatColor={updateChatColor} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>Din profil förbereds</Text><Text style={styles.muted}>Vi kunde inte läsa din profil än.</Text></View>}
+    {screen === 'discover' ? (
+      <DiscoverScreen match={matches.filter((match) => !blockedIds.includes(match.id))[matchIndex]} remaining={matches.filter((match) => !blockedIds.includes(match.id)).length - matchIndex} onDecision={decideMatch} onProfile={() => setScreen('profile')} onReaction={openReactionPicker} showEmojiPicker={showEmojiPicker} emojiPickerTarget={emojiPickerTarget} onSendEmoji={sendReaction} onCloseEmojiPicker={closeEmojiPicker} />
+    ) : screen === 'connections' ? (
+      <ConnectionsScreen matches={matches.filter((match) => mutualIds.includes(match.id) && !blockedIds.includes(match.id))} onChat={openChat} onBlock={blockProfile} onReport={reportProfile} onRate={(target) => { setRatingTarget(target); setScreen('dateRating'); }} />
+    ) : screen === 'challenges' ? (
+      <ChallengeEngineScreen membershipTier={membershipTier} onInvite={() => setScreen('connections')} />
+    ) : screen === 'membership' ? (
+      <MembershipScreen currentTier={membershipTier} onSelectTier={(tier) => { setMembershipTier(tier); Alert.alert('Medlemskap valt', 'Betalning aktiveras när betalningssteget kopplas på. Ditt val är sparat för den här sessionen.'); }} />
+    ) : screen === 'chatSettings' ? (
+      <ChatSettingsScreen settings={chatSettings} onSettingsChange={setChatSettings} onBack={() => setScreen(chatTarget ? 'chat' : 'connections')} chatColor={chatColor} onChatColorChange={updateChatColor} chatPanelColor={chatPanelColor} onChatPanelColorChange={updateChatPanelColor} chatPanelPattern={chatPanelPattern} onChatPanelPatternChange={updateChatPanelPattern} />
+    ) : screen === 'dateRating' && ratingTarget ? (
+      <DateRatingScreen target={ratingTarget} onBack={() => setScreen('connections')} onSubmit={submitDateRating} />
+    ) : screen === 'chat' && chatTarget ? (
+      <ChatScreen target={chatTarget} currentUserId={session.user.id} conversationId={chatConversationId} messages={messages} draft={draftMessage} onDraft={setDraftMessage} onSend={sendMessage} onBack={() => setScreen('connections')} onOpenSettings={() => setScreen('chatSettings')} chatColor={chatColor} chatPanelColor={chatPanelColor} chatPanelPattern={chatPanelPattern} />
+    ) : profile ? (
+      <ProfileJourneyScreen {...phoneVerificationProps} profile={profile} journey={profileJourney} email={session.user.email ?? ''} emailVerified={Boolean(session.user.email_confirmed_at)} saveError={profileJourneyError} saving={saving} onUpdateProfile={updateProfile} onUpdateJourney={updateProfileJourney} onPickImage={pickProfileImage} onSave={saveProfile} onComplete={() => setScreen('discover')} onLogout={() => void supabase.auth.signOut()} chatColor={chatColor} onUpdateChatColor={updateChatColor} />
+    ) : (
+      <View style={styles.empty}><Text style={styles.emptyTitle}>Din profil förbereds</Text><Text style={styles.muted}>Vi kunde inte läsa din profil än.</Text></View>
+    )}
   </SafeAreaView>;
 }
 

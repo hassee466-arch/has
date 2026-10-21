@@ -1,10 +1,15 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PhoneVerification } from './PhoneVerification';
 
 type Status = 'unverified' | 'pending' | 'manual_review' | 'needs_retry' | 'rejected';
 
 type Props = {
   status: Status;
   emailVerified: boolean;
+  phone: string;
+  phoneVerified: boolean;
+  onSendPhoneCode: (phone: string) => Promise<string | null>;
+  onVerifyPhoneCode: (phone: string, code: string) => Promise<string | null>;
   onStartVerification: () => void;
   onRefresh: () => void;
   onLogout: () => void;
@@ -34,7 +39,7 @@ const statusCopy: Record<Status, { title: string; body: string }> = {
   },
 };
 
-export function IdentityGate({ status, emailVerified, onStartVerification, onRefresh, onLogout, providerReady }: Props) {
+export function IdentityGate({ status, emailVerified, phone, phoneVerified, onSendPhoneCode, onVerifyPhoneCode, onStartVerification, onRefresh, onLogout, providerReady }: Props) {
   const copy = statusCopy[status];
   const canStart = status === 'unverified' || status === 'needs_retry';
 
@@ -71,6 +76,7 @@ export function IdentityGate({ status, emailVerified, onStartVerification, onRef
         <Text style={styles.checkText}>18+ ålderskrav via verifierad identitet</Text>
       </View>
     </View>
+    <PhoneVerification phone={phone} verified={phoneVerified} onSendCode={onSendPhoneCode} onVerifyCode={onVerifyPhoneCode} />
 
     {canStart && <Pressable style={[styles.primary, !providerReady && styles.primaryDisabled]} onPress={onStartVerification} disabled={!providerReady} accessibilityRole="button" accessibilityState={{ disabled: !providerReady }}>
       <Text style={styles.primaryText}>{providerReady ? 'Starta säker verifiering  →' : 'Verifiering kopplas på snart'}</Text>

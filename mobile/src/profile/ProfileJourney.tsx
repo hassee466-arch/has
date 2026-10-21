@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ageFromDateOfBirth, activityCategories, normalizeDateOfBirth, ProfileJourney, profileJourneySteps } from './profileJourneyData';
+import { PhoneVerification } from '../verification/PhoneVerification';
 
 type ProfileBasics = {
   display_name: string;
@@ -20,6 +21,10 @@ type Props = {
   journey: ProfileJourney;
   email: string;
   emailVerified: boolean;
+  phone: string;
+  phoneVerified: boolean;
+  onSendPhoneCode: (phone: string) => Promise<string | null>;
+  onVerifyPhoneCode: (phone: string, code: string) => Promise<string | null>;
   saveError: string;
   saving: boolean;
   onUpdateProfile: (field: ProfileField, value: ProfileBasics[ProfileField]) => void;
@@ -50,7 +55,7 @@ const chatColorOptions = [
   { color: '#f7e8e8', label: 'Korall', emoji: '🧡' },
 ];
 
-export function ProfileJourneyScreen({ profile, journey, email, emailVerified, saveError, saving, onUpdateProfile, onUpdateJourney, onPickImage, onSave, onComplete, onLogout, chatColor, onUpdateChatColor }: Props) {
+export function ProfileJourneyScreen({ profile, journey, email, emailVerified, phone: initialPhone, phoneVerified, onSendPhoneCode, onVerifyPhoneCode, saveError, saving, onUpdateProfile, onUpdateJourney, onPickImage, onSave, onComplete, onLogout, chatColor, onUpdateChatColor }: Props) {
   const [step, setStep] = useState(0);
   const [stepError, setStepError] = useState('');
   const [finished, setFinished] = useState(false);
@@ -225,6 +230,7 @@ export function ProfileJourneyScreen({ profile, journey, email, emailVerified, s
       {step === 9 && <>
         <StepHeading number="10" title="Trygghet först." description="Det här hjälper oss hålla Jannahu tryggt och respektfullt." />
         <View style={styles.verificationRow}><View style={styles.verificationMark}>{emailVerified ? '✓' : '!'}</View><View style={styles.verificationCopy}><Text style={styles.verificationTitle}>{emailVerified ? 'E-post verifierad' : 'E-post inte verifierad'}</Text><Text style={styles.fieldHint}>{email || 'Verifiera e-postadressen för att stärka kontot.'}</Text></View><Text style={emailVerified ? styles.statusDone : styles.statusPending}>{emailVerified ? 'KLAR' : 'VÄNTAR'}</Text></View>
+        <PhoneVerification phone={initialPhone} verified={phoneVerified} onSendCode={onSendPhoneCode} onVerifyCode={onVerifyPhoneCode} />
         <View style={styles.verificationRow}><View style={styles.verificationMarkPending}>·</View><View style={styles.verificationCopy}><Text style={styles.verificationTitle}>Identitetsverifiering (BankID / pass)</Text><Text style={styles.fieldHint}>Kontot aktiveras först när leverantören bekräftar din identitet. Svenska medlemmar kan använda BankID; internationella medlemmar använder pass eller nationellt id-kort.</Text></View><Text style={styles.statusPending}>KRÄVS</Text></View>
         <CheckRow checked={journey.safety.adultConfirmed} onPress={() => onUpdateJourney('safety', { ...journey.safety, adultConfirmed: !journey.safety.adultConfirmed })} label="Jag bekräftar att jag har fyllt 18 år." />
         <CheckRow checked={journey.safety.guidelinesAccepted} onPress={() => onUpdateJourney('safety', { ...journey.safety, guidelinesAccepted: !journey.safety.guidelinesAccepted })} label="Jag godkänner communityreglerna och bemöter andra med respekt." />
