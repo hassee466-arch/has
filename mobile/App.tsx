@@ -22,6 +22,7 @@ type Profile = {
   looking_for: string;
   lifestyle: { smoking?: string; alcohol?: string; children?: string };
   chat_color?: string;
+  chat_panel_color?: string;
 };
 
 type Screen = 'discover' | 'connections' | 'challenges' | 'chat' | 'profile' | 'membership' | 'chatSettings' | 'dateRating';
@@ -54,6 +55,7 @@ export default function App() {
   const [membershipTier, setMembershipTier] = useState('free');
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'unverified' | 'verified' | 'pending' | 'manual_review' | 'needs_retry' | 'rejected'>('loading');
   const [chatColor, setChatColor] = useState('#f1d8cc');
+  const [chatPanelColor, setChatPanelColor] = useState('#f7f5ef');
   const [chatSettings, setChatSettings] = useState({
     notifications: true,
     sound: true,
@@ -117,7 +119,7 @@ export default function App() {
   }, []);
 
   async function loadData(userId: string) {
-    const columns = 'id, display_name, age, city, profession, bio, interests, image_urls, is_visible, looking_for, lifestyle';
+    const columns = 'id, display_name, age, city, profession, bio, interests, image_urls, is_visible, looking_for, lifestyle, chat_color, chat_panel_color';
     const baseColumns = 'id, display_name, age, city, profession, bio, interests, image_urls, is_visible';
     const initialResults = await Promise.all([
       supabase.from('profiles').select(columns).eq('id', userId).maybeSingle(),
@@ -152,6 +154,7 @@ export default function App() {
       looking_for: ownRow.looking_for ?? 'Seriöst',
       lifestyle: ownRow.lifestyle ?? {},
       chat_color: ownRow.chat_color ?? '#f1d8cc',
+      chat_panel_color: ownRow.chat_panel_color ?? '#f7f5ef',
     } : {
       id: userId,
       display_name: typeof session?.user.user_metadata?.display_name === 'string' ? session.user.user_metadata.display_name : '',
@@ -165,8 +168,10 @@ export default function App() {
       looking_for: '',
       lifestyle: {},
       chat_color: '#f1d8cc',
+      chat_panel_color: '#f7f5ef',
     });
     setChatColor(ownRow?.chat_color ?? '#f1d8cc');
+    setChatPanelColor(ownRow?.chat_panel_color ?? '#f7f5ef');
 
     if (ownRow) {
       const journeyResults = await Promise.all([
@@ -407,6 +412,19 @@ export default function App() {
     }
   };
 
+  const updateChatPanelColor = async (color: string) => {
+    const previousColor = chatPanelColor;
+    setChatPanelColor(color);
+    if (!profile || !session) return;
+    const { error } = await supabase.from('profiles').update({ chat_panel_color: color }).eq('id', session.user.id);
+    if (error) {
+      Alert.alert('Kunde inte spara bakgrundsfärg', error.message);
+      setChatPanelColor((current) => current === color ? profile.chat_panel_color ?? previousColor : current);
+    } else {
+      setProfile((current) => current ? { ...current, chat_panel_color: color } : current);
+    }
+  };
+
   const submitDateRating = async (rating: number, comment: string) => {
     if (!ratingTarget || !session) return;
     
@@ -577,7 +595,7 @@ export default function App() {
   const currentMatch = matches[matchIndex];
   return <SafeAreaView style={styles.safe}><StatusBar style="dark" />
     <View style={styles.header}><View><Text style={styles.brand}>möt</Text><Text style={styles.kicker}>DATE WITH INTENTION</Text></View><View style={styles.headerActions}><Pressable onPress={() => setScreen(screen === 'profile' ? 'discover' : 'profile')}><Text style={styles.headerAction}>{screen === 'profile' ? 'Upptäck' : 'Profil'}</Text></Pressable><Pressable onPress={() => setScreen(screen === 'connections' ? 'discover' : 'connections')}><Text style={styles.headerAction}>{screen === 'connections' ? 'Upptäck' : `❤️ ${mutualIds.length}`}</Text></Pressable><Pressable onPress={() => setScreen(screen === 'challenges' ? 'discover' : 'challenges')}><Text style={styles.headerAction}>{screen === 'challenges' ? 'Upptäck' : '⭐'}</Text></Pressable><Pressable onPress={() => setScreen(screen === 'membership' ? 'discover' : 'membership')}><Text style={styles.headerAction}>{screen === 'membership' ? 'Upptäck' : 'Medlemskap'}</Text></Pressable></View></View>
-    {screen === 'discover' ? <DiscoverScreen match={matches.filter((match) => !blockedIds.includes(match.id))[matchIndex]} remaining={matches.filter((match) => !blockedIds.includes(match.id)).length - matchIndex} onDecision={decideMatch} onProfile={() => setScreen('profile')} onReaction={openReactionPicker} showEmojiPicker={showEmojiPicker} emojiPickerTarget={emojiPickerTarget} onSendEmoji={sendReaction} onCloseEmojiPicker={closeEmojiPicker} /> : screen === 'connections' ? <ConnectionsScreen matches={matches.filter((match) => mutualIds.includes(match.id) && !blockedIds.includes(match.id))} onChat={openChat} onBlock={blockProfile} onReport={reportProfile} onRate={(target) => { setRatingTarget(target); setScreen('dateRating'); }} /> : screen === 'challenges' ? <ChallengeEngineScreen membershipTier={membershipTier} onInvite={() => setScreen('connections')} /> : screen === 'membership' ? <MembershipScreen currentTier={membershipTier} onSelectTier={(tier) => { setMembershipTier(tier); Alert.alert('Medlemskap valt', 'Betalning aktiveras när betalningssteget kopplas på. Ditt val är sparat för den här sessionen.'); }} /> : screen === 'chatSettings' ? <ChatSettingsScreen settings={chatSettings} onSettingsChange={setChatSettings} onBack={() => setScreen(chatTarget ? 'chat' : 'connections')} chatColor={chatColor} onChatColorChange={updateChatColor} /> : screen === 'dateRating' && ratingTarget ? <DateRatingScreen target={ratingTarget} onBack={() => setScreen('connections')} onSubmit={submitDateRating} /> : screen === 'chat' && chatTarget ? <ChatScreen target={chatTarget} currentUserId={session.user.id} conversationId={chatConversationId} messages={messages} draft={draftMessage} onDraft={setDraftMessage} onSend={sendMessage} onBack={() => setScreen('connections')} onOpenSettings={() => setScreen('chatSettings')} chatColor={chatColor} /> : profile ? <ProfileJourneyScreen profile={profile} journey={profileJourney} email={session.user.email ?? ''} emailVerified={Boolean(session.user.email_confirmed_at)} saveError={profileJourneyError} saving={saving} onUpdateProfile={updateProfile} onUpdateJourney={updateProfileJourney} onPickImage={pickProfileImage} onSave={saveProfile} onComplete={() => setScreen('discover')} onLogout={() => void supabase.auth.signOut()} chatColor={chatColor} onUpdateChatColor={updateChatColor} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>Din profil förbereds</Text><Text style={styles.muted}>Vi kunde inte läsa din profil än.</Text></View>}
+    {screen === 'discover' ? <DiscoverScreen match={matches.filter((match) => !blockedIds.includes(match.id))[matchIndex]} remaining={matches.filter((match) => !blockedIds.includes(match.id)).length - matchIndex} onDecision={decideMatch} onProfile={() => setScreen('profile')} onReaction={openReactionPicker} showEmojiPicker={showEmojiPicker} emojiPickerTarget={emojiPickerTarget} onSendEmoji={sendReaction} onCloseEmojiPicker={closeEmojiPicker} /> : screen === 'connections' ? <ConnectionsScreen matches={matches.filter((match) => mutualIds.includes(match.id) && !blockedIds.includes(match.id))} onChat={openChat} onBlock={blockProfile} onReport={reportProfile} onRate={(target) => { setRatingTarget(target); setScreen('dateRating'); }} /> : screen === 'challenges' ? <ChallengeEngineScreen membershipTier={membershipTier} onInvite={() => setScreen('connections')} /> : screen === 'membership' ? <MembershipScreen currentTier={membershipTier} onSelectTier={(tier) => { setMembershipTier(tier); Alert.alert('Medlemskap valt', 'Betalning aktiveras när betalningssteget kopplas på. Ditt val är sparat för den här sessionen.'); }} /> : screen === 'chatSettings' ? <ChatSettingsScreen settings={chatSettings} onSettingsChange={setChatSettings} onBack={() => setScreen(chatTarget ? 'chat' : 'connections')} chatColor={chatColor} onChatColorChange={updateChatColor} chatPanelColor={chatPanelColor} onChatPanelColorChange={updateChatPanelColor} /> : screen === 'dateRating' && ratingTarget ? <DateRatingScreen target={ratingTarget} onBack={() => setScreen('connections')} onSubmit={submitDateRating} /> : screen === 'chat' && chatTarget ? <ChatScreen target={chatTarget} currentUserId={session.user.id} conversationId={chatConversationId} messages={messages} draft={draftMessage} onDraft={setDraftMessage} onSend={sendMessage} onBack={() => setScreen('connections')} onOpenSettings={() => setScreen('chatSettings')} chatColor={chatColor} chatPanelColor={chatPanelColor} /> : profile ? <ProfileJourneyScreen profile={profile} journey={profileJourney} email={session.user.email ?? ''} emailVerified={Boolean(session.user.email_confirmed_at)} saveError={profileJourneyError} saving={saving} onUpdateProfile={updateProfile} onUpdateJourney={updateProfileJourney} onPickImage={pickProfileImage} onSave={saveProfile} onComplete={() => setScreen('discover')} onLogout={() => void supabase.auth.signOut()} chatColor={chatColor} onUpdateChatColor={updateChatColor} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>Din profil förbereds</Text><Text style={styles.muted}>Vi kunde inte läsa din profil än.</Text></View>}
   </SafeAreaView>;
 }
 
@@ -714,7 +732,7 @@ function ConnectionsScreen({ matches, onChat, onBlock, onReport, onRate }: { mat
   </ScrollView>;
 }
 
-function ChatScreen({ target, currentUserId, conversationId, messages, draft, onDraft, onSend, onBack, onOpenSettings, chatColor }: { target: Profile; currentUserId: string; conversationId: string | null; messages: Array<{ id: string; sender_id: string; body: string; created_at: string }>; draft: string; onDraft: (value: string) => void; onSend: () => void; onBack: () => void; onOpenSettings: () => void; chatColor: string }) {
+function ChatScreen({ target, currentUserId, conversationId, messages, draft, onDraft, onSend, onBack, onOpenSettings, chatColor, chatPanelColor }: { target: Profile; currentUserId: string; conversationId: string | null; messages: Array<{ id: string; sender_id: string; body: string; created_at: string }>; draft: string; onDraft: (value: string) => void; onSend: () => void; onBack: () => void; onOpenSettings: () => void; chatColor: string; chatPanelColor: string }) {
   const [localMessage, setLocalMessage] = useState(messages);
   const scrollViewRef = useRef<ScrollView>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -768,8 +786,8 @@ function ChatScreen({ target, currentUserId, conversationId, messages, draft, on
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
 
-  return <View style={[styles.chat, { backgroundColor: chatColor }]}>
-    <View style={[styles.chatHeader, { backgroundColor: chatColor }]}>
+  return <View style={[styles.chat, { backgroundColor: chatPanelColor }]}>
+    <View style={[styles.chatHeader, { backgroundColor: chatPanelColor }]}>
       <Pressable onPress={onBack} style={styles.chatBackButton}>
         <Text style={styles.chatBackText}>←</Text>
       </Pressable>
@@ -785,7 +803,7 @@ function ChatScreen({ target, currentUserId, conversationId, messages, draft, on
     </View>
     <ScrollView
       ref={scrollViewRef}
-      style={[styles.messageList, { backgroundColor: chatColor }]}
+      style={[styles.messageList, { backgroundColor: chatPanelColor }]}
       contentContainerStyle={styles.messageContent}
       onScroll={handleScroll}
       scrollEventThrottle={16}
@@ -799,7 +817,7 @@ function ChatScreen({ target, currentUserId, conversationId, messages, draft, on
     
     {/* Emoji Picker */}
     {showEmojiPicker && (
-      <View style={[styles.emojiPicker, { backgroundColor: chatColor }]}>
+      <View style={[styles.emojiPicker, { backgroundColor: chatPanelColor }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiPickerContent}>
           {commonEmojis.map((emoji) => (
             <Pressable
@@ -820,7 +838,7 @@ function ChatScreen({ target, currentUserId, conversationId, messages, draft, on
       </View>
     )}
     
-    <View style={[styles.composer, { backgroundColor: chatColor }]}>
+    <View style={[styles.composer, { backgroundColor: chatPanelColor }]}>
       <Pressable style={styles.emojiToggle} onPress={() => setShowEmojiPicker(!showEmojiPicker)}>
         <Text style={styles.emojiToggleText}>😊</Text>
       </Pressable>
@@ -830,7 +848,7 @@ function ChatScreen({ target, currentUserId, conversationId, messages, draft, on
   </View>;
 }
 
-function ChatSettingsScreen({ settings, onSettingsChange, onBack, chatColor, onChatColorChange }: { settings: { notifications: boolean; sound: boolean; readReceipts: boolean; typingIndicator: boolean; onlineStatus: boolean; messagePreview: boolean }; onSettingsChange: (settings: any) => void; onBack: () => void; chatColor: string; onChatColorChange: (color: string) => void }) {
+function ChatSettingsScreen({ settings, onSettingsChange, onBack, chatColor, onChatColorChange, chatPanelColor, onChatPanelColorChange }: { settings: { notifications: boolean; sound: boolean; readReceipts: boolean; typingIndicator: boolean; onlineStatus: boolean; messagePreview: boolean }; onSettingsChange: (settings: any) => void; onBack: () => void; chatColor: string; onChatColorChange: (color: string) => void; chatPanelColor: string; onChatPanelColorChange: (color: string) => void }) {
   const toggleSetting = (key: keyof typeof settings) => {
     onSettingsChange({ ...settings, [key]: !settings[key] });
   };
@@ -842,6 +860,10 @@ function ChatSettingsScreen({ settings, onSettingsChange, onBack, chatColor, onC
     { color: '#f5eadf', label: 'Beige', emoji: '🤎' },
     { color: '#e8e0f0', label: 'Lila', emoji: '💜' },
     { color: '#f7e8e8', label: 'Korall', emoji: '🧡' },
+  ];
+  const panelColorOptions = [
+    { color: '#f7f5ef', label: 'Neutral', emoji: '◯' },
+    ...colorOptions,
   ];
 
   return <View style={styles.settingsScreen}>
@@ -906,7 +928,7 @@ function ChatSettingsScreen({ settings, onSettingsChange, onBack, chatColor, onC
       </View>
 
       <View style={styles.settingsSection}>
-        <Text style={styles.settingsSectionTitle}>Chattfärg</Text>
+        <Text style={styles.settingsSectionTitle}>Meddelandefärg</Text>
         
         {/* Color Options */}
         <View style={styles.colorPickerContainer}>
@@ -927,6 +949,33 @@ function ChatSettingsScreen({ settings, onSettingsChange, onBack, chatColor, onC
                 {chatColor === option.color && <Text style={styles.colorCheckmark}>✓</Text>}
               </View>
               <Text style={[styles.colorLabel, chatColor === option.color && styles.colorLabelActive]}>
+                {option.emoji} {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.settingsSection}>
+        <Text style={styles.settingsSectionTitle}>Chattbakgrund</Text>
+        <View style={styles.colorPickerContainer}>
+          {panelColorOptions.map((option) => (
+            <Pressable
+              key={option.color}
+              style={({ pressed }) => [
+                styles.colorOption,
+                chatPanelColor === option.color && styles.colorOptionActive,
+                pressed && { opacity: 0.7 }
+              ]}
+              onPress={() => onChatPanelColorChange(option.color)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: chatPanelColor === option.color }}
+              accessibilityLabel={`${option.label} chattbakgrund`}
+            >
+              <View style={[styles.colorSwatch, { backgroundColor: option.color }]}>
+                {chatPanelColor === option.color && <Text style={styles.colorCheckmark}>✓</Text>}
+              </View>
+              <Text style={[styles.colorLabel, chatPanelColor === option.color && styles.colorLabelActive]}>
                 {option.emoji} {option.label}
               </Text>
             </Pressable>
