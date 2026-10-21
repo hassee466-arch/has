@@ -768,8 +768,8 @@ function ChatScreen({ target, currentUserId, conversationId, messages, draft, on
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
 
-  return <View style={styles.chat}>
-    <View style={styles.chatHeader}>
+  return <View style={[styles.chat, { backgroundColor: chatColor }]}>
+    <View style={[styles.chatHeader, { backgroundColor: chatColor }]}>
       <Pressable onPress={onBack} style={styles.chatBackButton}>
         <Text style={styles.chatBackText}>←</Text>
       </Pressable>
@@ -785,7 +785,7 @@ function ChatScreen({ target, currentUserId, conversationId, messages, draft, on
     </View>
     <ScrollView
       ref={scrollViewRef}
-      style={styles.messageList}
+      style={[styles.messageList, { backgroundColor: chatColor }]}
       contentContainerStyle={styles.messageContent}
       onScroll={handleScroll}
       scrollEventThrottle={16}
@@ -799,7 +799,7 @@ function ChatScreen({ target, currentUserId, conversationId, messages, draft, on
     
     {/* Emoji Picker */}
     {showEmojiPicker && (
-      <View style={styles.emojiPicker}>
+      <View style={[styles.emojiPicker, { backgroundColor: chatColor }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiPickerContent}>
           {commonEmojis.map((emoji) => (
             <Pressable
@@ -820,7 +820,7 @@ function ChatScreen({ target, currentUserId, conversationId, messages, draft, on
       </View>
     )}
     
-    <View style={styles.composer}>
+    <View style={[styles.composer, { backgroundColor: chatColor }]}>
       <Pressable style={styles.emojiToggle} onPress={() => setShowEmojiPicker(!showEmojiPicker)}>
         <Text style={styles.emojiToggleText}>😊</Text>
       </Pressable>
