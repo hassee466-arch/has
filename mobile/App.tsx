@@ -395,12 +395,13 @@ export default function App() {
   };
 
   const updateChatColor = async (color: string) => {
+    const previousColor = chatColor;
     setChatColor(color);
     if (!profile || !session) return;
     const { error } = await supabase.from('profiles').update({ chat_color: color }).eq('id', session.user.id);
     if (error) {
       Alert.alert('Kunde inte spara färg', error.message);
-      setChatColor(profile.chat_color ?? '#f1d8cc');
+      setChatColor((current) => current === color ? profile.chat_color ?? previousColor : current);
     } else {
       setProfile((current) => current ? { ...current, chat_color: color } : current);
     }
@@ -917,10 +918,7 @@ function ChatSettingsScreen({ settings, onSettingsChange, onBack, chatColor, onC
                 chatColor === option.color && styles.colorOptionActive,
                 pressed && { opacity: 0.7 }
               ]}
-              onPress={() => {
-                Alert.alert('Color selected', option.color);
-                onChatColorChange(option.color);
-              }}
+              onPress={() => onChatColorChange(option.color)}
               accessibilityRole="button"
               accessibilityState={{ selected: chatColor === option.color }}
               accessibilityLabel={`${option.label} chattfärg`}

@@ -45,6 +45,8 @@ The Expo mobile client lives in [mobile](mobile). It shares Supabase auth and pr
 
 The mobile profile expansion adds image uploads, interests, relationship intent, and lifestyle preferences. Run [supabase/mobile-profile-expansion.sql](supabase/mobile-profile-expansion.sql) in the Supabase SQL Editor before saving those new preference fields.
 
+Chat color preferences are saved to each member's profile. Run [supabase/mobile-chat-color.sql](supabase/mobile-chat-color.sql) in the Supabase SQL Editor to enable saving and restoring the selected color.
+
 Persistent mobile likes and the Connections view use [supabase/mobile-social.sql](supabase/mobile-social.sql). Run that migration before expecting like/pass actions to survive app restarts.
 
 Mobile chat and challenge records use [supabase/mobile-community.sql](supabase/mobile-community.sql). Run it before using the Connections **Skriv** action; the Challenges catalog is currently shown in a prepared state while real partner booking is still disabled.
