@@ -187,10 +187,10 @@ export default function App() {
         supabase.from('profile_personality').select('answers').eq('user_id', userId).maybeSingle(),
         supabase.from('profile_dating_intentions').select('goals, partner_qualities').eq('user_id', userId).maybeSingle(),
         supabase.from('profile_activity_interests').select('activities').eq('user_id', userId).maybeSingle(),
-        supabase.from('profile_challenge_preferences').select('challenge_types, adventure_level').eq('user_id', userId).maybeSingle(),
+        supabase.from('profile_challenge_preferences').select('challenge_types, adventure_level, interested').eq('user_id', userId).maybeSingle(),
         supabase.from('profile_lifestyle').select('answers, is_public').eq('user_id', userId).maybeSingle(),
         supabase.from('profile_partner_preferences').select('preferences').eq('user_id', userId).maybeSingle(),
-        supabase.from('profile_availability').select('available_times, budget').eq('user_id', userId).maybeSingle(),
+        supabase.from('profile_availability').select('available_times, budget, food_preferences, venue_preferences, try_new_activities, first_date_setting').eq('user_id', userId).maybeSingle(),
         supabase.from('profile_safety').select('adult_confirmed, guidelines_accepted, profile_visible').eq('user_id', userId).maybeSingle(),
       ]);
       if (!journeyResults[0].data) setScreen('profile');
@@ -202,10 +202,10 @@ export default function App() {
         const [personal, introduction, personality, intentions, activities, challenges, lifestyle, partner, availability, safety] = journeyResults.map((result) => result.data ?? {});
         const savedPersonal = personal as { date_of_birth?: string; gender?: string; interested_in?: string[]; nationality?: string; languages?: string };
         const savedIntentions = intentions as { goals?: string[]; partner_qualities?: string[] };
-        const savedChallenges = challenges as { challenge_types?: string[]; adventure_level?: number };
+        const savedChallenges = challenges as { challenge_types?: string[]; adventure_level?: number; interested?: boolean };
         const savedLifestyle = lifestyle as { answers?: Partial<ProfileJourney['lifestyle']>; is_public?: boolean };
         const savedPartner = partner as { preferences?: Partial<ProfileJourney['partner']> };
-        const savedAvailability = availability as { available_times?: string[]; budget?: string };
+        const savedAvailability = availability as { available_times?: string[]; budget?: string; food_preferences?: string[]; venue_preferences?: string[]; try_new_activities?: string; first_date_setting?: string };
         const savedSafety = safety as { adult_confirmed?: boolean; guidelines_accepted?: boolean; profile_visible?: boolean };
         setProfileJourney({
           ...emptyProfileJourney,
@@ -214,10 +214,10 @@ export default function App() {
           personality: { ...emptyProfileJourney.personality, ...((personality as { answers?: Partial<ProfileJourney['personality']> }).answers ?? {}) },
           intentions: { goals: savedIntentions.goals ?? [], qualities: savedIntentions.partner_qualities ?? [] },
           activities: (activities as { activities?: string[] }).activities ?? ownRow.interests ?? [],
-          challenges: { types: savedChallenges.challenge_types ?? [], adventureLevel: savedChallenges.adventure_level ?? 3 },
+          challenges: { types: savedChallenges.challenge_types ?? [], adventureLevel: savedChallenges.adventure_level ?? 3, interested: savedChallenges.interested ?? true },
           lifestyle: { ...emptyProfileJourney.lifestyle, ...(savedLifestyle.answers ?? {}), visible: savedLifestyle.is_public ?? false },
           partner: { ...emptyProfileJourney.partner, ...(savedPartner.preferences ?? {}) },
-          availability: { times: savedAvailability.available_times ?? [], budget: savedAvailability.budget ?? '' },
+          availability: { times: savedAvailability.available_times ?? [], budget: savedAvailability.budget ?? '', foodPreferences: savedAvailability.food_preferences ?? [], venuePreferences: savedAvailability.venue_preferences ?? [], tryNewActivities: savedAvailability.try_new_activities ?? '', firstDateSetting: savedAvailability.first_date_setting ?? '' },
           safety: { adultConfirmed: savedSafety.adult_confirmed ?? false, guidelinesAccepted: savedSafety.guidelines_accepted ?? false, profileVisible: savedSafety.profile_visible ?? Boolean(ownRow.is_visible) },
         });
         setProfileJourneyError('');
@@ -370,7 +370,7 @@ export default function App() {
           break;
         }
         case 5: {
-          const { error } = await supabase.from('profile_challenge_preferences').upsert({ user_id: userId, challenge_types: profileJourney.challenges.types, adventure_level: profileJourney.challenges.adventureLevel });
+          const { error } = await supabase.from('profile_challenge_preferences').upsert({ user_id: userId, challenge_types: profileJourney.challenges.types, adventure_level: profileJourney.challenges.adventureLevel, interested: profileJourney.challenges.interested });
           writeError = error;
           break;
         }
@@ -385,7 +385,7 @@ export default function App() {
           break;
         }
         case 8: {
-          const { error } = await supabase.from('profile_availability').upsert({ user_id: userId, available_times: profileJourney.availability.times, budget: profileJourney.availability.budget || null });
+          const { error } = await supabase.from('profile_availability').upsert({ user_id: userId, available_times: profileJourney.availability.times, budget: profileJourney.availability.budget || null, food_preferences: profileJourney.availability.foodPreferences, venue_preferences: profileJourney.availability.venuePreferences, try_new_activities: profileJourney.availability.tryNewActivities || null, first_date_setting: profileJourney.availability.firstDateSetting || null });
           writeError = error;
           break;
         }

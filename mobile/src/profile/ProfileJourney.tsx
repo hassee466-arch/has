@@ -38,6 +38,9 @@ const qualityOptions = ['Ärlighet', 'Lojalitet', 'Humor', 'Ambition', 'Vänligh
 const challengeOptions = ['Lugna', 'Roliga', 'Romantiska', 'Utomhus', 'Tävlingsinriktade', 'Kreativa', 'Överraskande'];
 const availabilityOptions = ['Vardagsmorgon', 'Vardagskväll', 'Fredag kväll', 'Lördag', 'Söndag'];
 const budgetOptions = ['0–100 kr', '100–200 kr', '200–400 kr', '400–600 kr', 'Flexibelt'];
+const foodPreferenceOptions = ['Vegetariskt', 'Veganskt', 'Halal', 'Kosher', 'Glutenfritt', 'Laktosfritt', 'Inga särskilda önskemål'];
+const venuePreferenceOptions = ['Café', 'Restaurang', 'Utomhus', 'Aktivitet eller spel', 'Kultur', 'Lugnt och stilla', 'Livligt och socialt'];
+const firstDateSettingOptions = ['Kafé eller fika', 'Promenad utomhus', 'En aktivitet tillsammans', 'Lunch eller middag', 'Offentlig plats med mycket folk', 'Digitalt först'];
 const chatColorOptions = [
   { color: '#f1d8cc', label: 'Rosa', emoji: '🌸' },
   { color: '#d4e5f7', label: 'Blå', emoji: '💙' },
@@ -65,7 +68,7 @@ export function ProfileJourneyScreen({ profile, journey, email, emailVerified, s
     if (step === 2 && Object.values(journey.personality).some((answer) => !answer)) return 'Besvara varje fråga för att fortsätta.';
     if (step === 3 && !journey.intentions.goals.length) return 'Välj minst en dejtingintention.';
     if (step === 4 && journey.activities.length < 3) return 'Välj minst tre aktiviteter du tycker om.';
-    if (step === 5 && !journey.challenges.types.length) return 'Välj minst en typ av utmaning.';
+    if (step === 5 && journey.challenges.interested && !journey.challenges.types.length) return 'Välj minst en typ av utmaning eller välj att hoppa över utmaningar.';
     if (step === 7) {
       if (journey.partner.ageMin < 18 || journey.partner.ageMax > 100 || journey.partner.ageMin > journey.partner.ageMax) return 'Kontrollera åldersspannet. Alla du kan träffa måste vara 18+.';
       if (!journey.partner.genders.length) return 'Välj vem du vill upptäcka.';
@@ -107,7 +110,7 @@ export function ProfileJourneyScreen({ profile, journey, email, emailVerified, s
   const patchIntentions = (field: keyof ProfileJourney['intentions'], value: string[]) => onUpdateJourney('intentions', { ...journey.intentions, [field]: value });
   const patchLifestyle = (field: keyof ProfileJourney['lifestyle'], value: string | string[] | boolean) => onUpdateJourney('lifestyle', { ...journey.lifestyle, [field]: value });
   const patchPartner = (field: keyof ProfileJourney['partner'], value: number | string[]) => onUpdateJourney('partner', { ...journey.partner, [field]: value });
-  const patchAvailability = (field: keyof ProfileJourney['availability'], value: string | string[]) => onUpdateJourney('availability', { ...journey.availability, [field]: value });
+  const patchAvailability = (field: keyof ProfileJourney['availability'], value: string | string[] | boolean) => onUpdateJourney('availability', { ...journey.availability, [field]: value });
   const enteredAge = ageFromDateOfBirth(journey.personal.dateOfBirth);
   const birthDateHint = !journey.personal.dateOfBirth
     ? 'Ange t.ex. 23/05/1990 eller 1990-05-23. Datumet visas aldrig.'
@@ -179,8 +182,11 @@ export function ProfileJourneyScreen({ profile, journey, email, emailVerified, s
 
       {step === 5 && <>
         <StepHeading number="06" title="Vilka utmaningar lockar?" description="Vi använder det här för att föreslå upplevelser som passar din energi." />
-        <Field label="Jag skulle tacka ja till"><OptionSet options={challengeOptions} selected={journey.challenges.types} onChange={(values) => onUpdateJourney('challenges', { ...journey.challenges, types: values })} multiple /></Field>
-        <Field label="Hur äventyrlig känner du dig?" hint="1 är lugnt tempo · 5 är gärna något helt nytt"><View style={styles.scaleRow}>{[1, 2, 3, 4, 5].map((level) => <Pressable key={level} style={[styles.scaleButton, journey.challenges.adventureLevel === level && styles.scaleButtonActive]} onPress={() => onUpdateJourney('challenges', { ...journey.challenges, adventureLevel: level })} accessibilityRole="radio" accessibilityState={{ checked: journey.challenges.adventureLevel === level }}><Text style={[styles.scaleNumber, journey.challenges.adventureLevel === level && styles.scaleNumberActive]}>{level}</Text></Pressable>)}</View><View style={styles.scaleLabels}><Text style={styles.fieldHint}>Lugnt</Text><Text style={styles.fieldHint}>Äventyrligt</Text></View></Field>
+        <Field label="Vill du göra dejtingutmaningar?"><OptionSet options={['Ja, gärna', 'Inte just nu']} selected={[journey.challenges.interested ? 'Ja, gärna' : 'Inte just nu']} onChange={(values) => onUpdateJourney('challenges', { ...journey.challenges, interested: values[0] !== 'Inte just nu' })} /></Field>
+        {journey.challenges.interested && <>
+          <Field label="Jag skulle tacka ja till"><OptionSet options={challengeOptions} selected={journey.challenges.types} onChange={(values) => onUpdateJourney('challenges', { ...journey.challenges, types: values })} multiple /></Field>
+          <Field label="Hur äventyrlig känner du dig?" hint="1 är lugnt tempo · 5 är gärna något helt nytt"><View style={styles.scaleRow}>{[1, 2, 3, 4, 5].map((level) => <Pressable key={level} style={[styles.scaleButton, journey.challenges.adventureLevel === level && styles.scaleButtonActive]} onPress={() => onUpdateJourney('challenges', { ...journey.challenges, adventureLevel: level })} accessibilityRole="radio" accessibilityState={{ checked: journey.challenges.adventureLevel === level }}><Text style={[styles.scaleNumber, journey.challenges.adventureLevel === level && styles.scaleNumberActive]}>{level}</Text></Pressable>)}</View><View style={styles.scaleLabels}><Text style={styles.fieldHint}>Lugnt</Text><Text style={styles.fieldHint}>Äventyrligt</Text></View></Field>
+        </>}
       </>}
 
       {step === 6 && <>
@@ -210,6 +216,10 @@ export function ProfileJourneyScreen({ profile, journey, email, emailVerified, s
         <StepHeading number="09" title="När och hur vill du ses?" description="Så kan vi föreslå utmaningar som passar kalendern och plånboken." />
         <Field label="När brukar du kunna ses?"><OptionSet options={availabilityOptions} selected={journey.availability.times} onChange={(values) => patchAvailability('times', values)} multiple /></Field>
         <Field label="En vanlig dejtbudget"><OptionSet options={budgetOptions} selected={[journey.availability.budget]} onChange={(values) => patchAvailability('budget', values[0] ?? '')} /></Field>
+        <Field label="Matpreferenser (valfritt)" hint="Välj vad du vill att vi ska ta hänsyn till vid planering."><OptionSet options={foodPreferenceOptions} selected={journey.availability.foodPreferences} onChange={(values) => patchAvailability('foodPreferences', values)} multiple /></Field>
+        <Field label="Platser och miljöer (valfritt)"><OptionSet options={venuePreferenceOptions} selected={journey.availability.venuePreferences} onChange={(values) => patchAvailability('venuePreferences', values)} multiple /></Field>
+        <Field label="Prova nya aktiviteter"><OptionSet options={['Gärna något nytt', 'Ibland, med rätt person', 'Helst bekanta aktiviteter']} selected={journey.availability.tryNewActivities ? [journey.availability.tryNewActivities] : []} onChange={(values) => patchAvailability('tryNewActivities', values[0] ?? '')} /></Field>
+        <Field label="Min idealiska första dejt (valfritt)"><OptionSet options={firstDateSettingOptions} selected={journey.availability.firstDateSetting ? [journey.availability.firstDateSetting] : []} onChange={(values) => patchAvailability('firstDateSetting', values[0] ?? '')} /></Field>
       </>}
 
       {step === 9 && <>

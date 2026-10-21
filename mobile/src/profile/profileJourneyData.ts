@@ -26,6 +26,7 @@ export type ProfileJourney = {
   challenges: {
     types: string[];
     adventureLevel: number;
+    interested: boolean;
   };
   lifestyle: {
     smoking: string;
@@ -50,6 +51,10 @@ export type ProfileJourney = {
   availability: {
     times: string[];
     budget: string;
+    foodPreferences: string[];
+    venuePreferences: string[];
+    tryNewActivities: string;
+    firstDateSetting: string;
   };
   safety: {
     adultConfirmed: boolean;
@@ -64,10 +69,10 @@ export const emptyProfileJourney: ProfileJourney = {
   personality: { socialStyle: '', planningStyle: '', adventure: '', competition: '', conversation: '', novelty: '' },
   intentions: { goals: [], qualities: [] },
   activities: [],
-  challenges: { types: [], adventureLevel: 3 },
+  challenges: { types: [], adventureLevel: 3, interested: true },
   lifestyle: { smoking: '', alcohol: '', exercise: '', pets: '', travel: '', social: '', weekends: [], sleep: '', visible: false },
   partner: { ageMin: 18, ageMax: 70, distanceKm: 50, genders: [], intentions: [], sharedInterests: [], lifestyle: [] },
-  availability: { times: [], budget: '' },
+  availability: { times: [], budget: '', foodPreferences: [], venuePreferences: [], tryNewActivities: '', firstDateSetting: '' },
   safety: { adultConfirmed: false, guidelinesAccepted: false, profileVisible: false },
 };
 
